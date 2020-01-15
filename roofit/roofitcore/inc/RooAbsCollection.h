@@ -22,6 +22,7 @@
 #include "RooCmdArg.h"
 #include "RooLinkedListIter.h"
 #include <string>
+#include <map>
 
 class RooCmdArg;
 
@@ -29,7 +30,6 @@ class RooAbsCollection : public TObject, public RooPrintable {
 public:
   using Storage_t = std::vector<RooAbsArg*>;
   using const_iterator = Storage_t::const_iterator;
-
 
   // Constructors, assignment etc.
   RooAbsCollection();
@@ -99,7 +99,8 @@ public:
   }
   Bool_t containsInstance(const RooAbsArg& var) const { 
     // Returns true if var is contained in this collection
-    return std::find(_list.begin(), _list.end(), &var) != _list.end();
+    if (doDict) return _dict.find(var.GetName()) != _dict.end();
+    else return std::find(_list.begin(), _list.end(), &var) != _list.end();
   }
   RooAbsCollection* selectByAttrib(const char* name, Bool_t value) const ;
   RooAbsCollection* selectCommon(const RooAbsCollection& refColl) const ;
@@ -172,8 +173,14 @@ public:
 
   /// Returns index of given arg, or -1 if arg is not in the collection.
   inline Int_t index(const RooAbsArg* arg) const {
-    auto item = std::find(_list.begin(), _list.end(), arg);
-    return item != _list.end() ? item - _list.begin() : -1;
+    if (doDict) { 
+        if (arg==nullptr) return -1; 
+        return index(arg->GetName()); // fallback on the name
+    }
+    else{
+        auto item = std::find(_list.begin(), _list.end(), arg);
+        return item != _list.end() ? item - _list.begin() : -1;
+    }
   }
 
   /// Returns index of given arg, or -1 if arg is not in the collection.
@@ -184,10 +191,16 @@ public:
   /// Returns index of arg with given name, or -1 if arg is not in the collection.
   inline Int_t index(const char* name) const {
     const std::string theName(name);
+    if (doDict){
+        auto item = _dict.find(theName);
+        return item != _dict.end() ? item->second : -1;
+    }
+    else {
     auto item = std::find_if(_list.begin(), _list.end(), [&theName](const RooAbsArg * elm){
       return elm->GetName() == theName;
     });
     return item != _list.end() ? item - _list.begin() : -1;
+    }
   }
 
   inline virtual void Print(Option_t *options= 0) const {
@@ -244,6 +257,11 @@ protected:
   Storage_t _list; // Actual object storage
   using LegacyIterator_t = TIteratorToSTLInterface<Storage_t>;
 
+  using Dict_t = std::map<std::string,size_t>;  // dictionary type -- fast access to large structures. map or unordered_map in mind.
+  mutable Dict_t _dict; // actual dictionary
+  bool doDict{false}; // create dictionary
+  void recreateDict() const;// ugly -> for rooworkspaces?. Mutable/const because at the moment called by find.
+
   Bool_t _ownCont;  // Flag to identify a list that owns its contents.
   TString _name;    // Our name.
   Bool_t _allRRV ; // All contents are RRV
@@ -263,6 +281,7 @@ protected:
 
   void makeStructureTag() ;
   void makeTypedStructureTag() ;
+
   
 private:
   std::unique_ptr<LegacyIterator_t> makeLegacyIterator (bool forward = true) const;

@@ -144,6 +144,7 @@ void RooArgSet::operator delete (void* ptr)
 RooArgSet::RooArgSet() :
   RooAbsCollection()
 {
+  doDict=true;
   TRACE_CREATE
 }
 
@@ -155,8 +156,8 @@ RooArgSet::RooArgSet() :
 /// Warning messages will be printed for dropped items.
 
 RooArgSet::RooArgSet(const RooArgList& list) :
-  RooAbsCollection(list.GetName())
-{
+  RooAbsCollection(list.GetName()){
+  doDict=true;
   add(list,kTRUE) ; // verbose to catch duplicate errors
   TRACE_CREATE
 }
@@ -171,6 +172,7 @@ RooArgSet::RooArgSet(const RooArgList& list) :
 RooArgSet::RooArgSet(const RooArgList& list, const RooAbsArg* var1) :
   RooAbsCollection(list.GetName())
 {
+  doDict=true;
   if (var1 && !list.contains(*var1)) {
     add(*var1,kTRUE) ;
   }
@@ -186,6 +188,7 @@ RooArgSet::RooArgSet(const RooArgList& list, const RooAbsArg* var1) :
 RooArgSet::RooArgSet(const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   TRACE_CREATE
 }
 
@@ -197,6 +200,7 @@ RooArgSet::RooArgSet(const char *name) :
 
 RooArgSet::RooArgSet(const RooArgSet& set1, const RooArgSet& set2, const char *name) : RooAbsCollection(name)
 {
+  doDict=true;
   add(set1) ;
   add(set2) ;
   TRACE_CREATE    
@@ -212,6 +216,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1);
   TRACE_CREATE
 }
@@ -225,6 +230,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2);
   TRACE_CREATE
 }
@@ -239,6 +245,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2); add(var3);
   TRACE_CREATE
 }
@@ -253,6 +260,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2); add(var3); add(var4);
   TRACE_CREATE
 }
@@ -268,6 +276,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2); add(var3); add(var4); add(var5);
   TRACE_CREATE
 }
@@ -283,6 +292,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2); add(var3); add(var4); add(var5); add(var6);
   TRACE_CREATE
 }
@@ -299,6 +309,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2); add(var3); add(var4); add(var5); add(var6); add(var7) ;
   TRACE_CREATE
 }
@@ -315,6 +326,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 		     const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2); add(var3); add(var4); add(var5); add(var6); add(var7) ;add(var8) ;
   TRACE_CREATE
 }
@@ -331,6 +343,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 		     const RooAbsArg& var9, const char *name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   add(var1); add(var2); add(var3); add(var4); add(var5); add(var6); add(var7); add(var8); add(var9);
   TRACE_CREATE
 }
@@ -345,6 +358,7 @@ RooArgSet::RooArgSet(const RooAbsArg& var1, const RooAbsArg& var2,
 RooArgSet::RooArgSet(const TCollection& tcoll, const char* name) :
   RooAbsCollection(name)
 {
+  doDict=true;
   TIterator* iter = tcoll.MakeIterator() ;
   TObject* obj ;
   while((obj=iter->Next())) {
@@ -369,6 +383,7 @@ RooArgSet::RooArgSet(const TCollection& tcoll, const char* name) :
 RooArgSet::RooArgSet(const RooArgSet& other, const char *name) 
   : RooAbsCollection(other,name)
 {
+  doDict=true;
   TRACE_CREATE
 }
 

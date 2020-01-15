@@ -26,6 +26,9 @@ implementation can enforce unique names). The storage of objects is
 implemented using the container denoted by RooAbsCollection::Storage_t.
 **/
 
+// DEBUG DEBUG DEBUG!!
+//#define DDD
+
 #include "RooAbsCollection.h"
 
 #include "Riostream.h"
@@ -85,6 +88,9 @@ RooAbsCollection::RooAbsCollection(const char *name) :
   _name(name),
   _allRRV(kTRUE)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   _list.reserve(8);
 }
 
@@ -103,10 +109,14 @@ RooAbsCollection::RooAbsCollection(const RooAbsCollection& other, const char *na
   _name(name),
   _allRRV(other._allRRV)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   RooTrace::create(this) ;
   if (!name) setName(other.GetName()) ;
 
   _list.reserve(other._list.size());
+  doDict=other.doDict;
 
   for (auto item : other._list) {
     add(*item);
@@ -120,6 +130,9 @@ RooAbsCollection::RooAbsCollection(const RooAbsCollection& other, const char *na
 
 RooAbsCollection::~RooAbsCollection()
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // Delete all variables in our list if we own them
   if(_ownCont){
     safeDeleteList() ;
@@ -134,6 +147,9 @@ RooAbsCollection::~RooAbsCollection()
 
 void RooAbsCollection::safeDeleteList()
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // Handle trivial case here
   if (_list.size() > 1) {
     std::vector<RooAbsArg*> tmp;
@@ -171,6 +187,7 @@ void RooAbsCollection::safeDeleteList()
     delete item;
   }
   _list.clear();
+  _dict.clear(); // no guard necessary
 }
 
 
@@ -193,6 +210,9 @@ void RooAbsCollection::safeDeleteList()
 
 RooAbsCollection* RooAbsCollection::snapshot(Bool_t deepCopy) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // First create empty list
   TString snapName ;
   if (TString(GetName()).Length()>0) {
@@ -229,11 +249,18 @@ RooAbsCollection* RooAbsCollection::snapshot(Bool_t deepCopy) const
 
 Bool_t RooAbsCollection::snapshot(RooAbsCollection& output, Bool_t deepCopy) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // Copy contents
   output.reserve(_list.size());
   for (auto orig : _list) {
     RooAbsArg *copy= (RooAbsArg*)orig->Clone();
     output.add(*copy);
+  }
+  output.doDict=doDict;
+  if (doDict){
+      output._dict=_dict;
   }
 
   // Add external dependents
@@ -274,6 +301,9 @@ Bool_t RooAbsCollection::snapshot(RooAbsCollection& output, Bool_t deepCopy) con
 
 Bool_t RooAbsCollection::addServerClonesToList(const RooAbsArg& var)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   Bool_t ret(kFALSE) ;
 
   for (const auto server : var.servers()) {
@@ -283,6 +313,12 @@ Bool_t RooAbsCollection::addServerClonesToList(const RooAbsArg& var)
       RooAbsArg* serverClone = (RooAbsArg*)server->Clone() ;
       serverClone->setAttribute("SnapShot_ExtRefClone") ;
       _list.push_back(serverClone) ;
+      if (doDict) {
+          _dict[serverClone->GetName()] = _list.size()-1;
+#ifdef DDD
+          std::cout<<"DDD "<<GetName()<<" adding to dict: '"<<serverClone->GetName()<<"', "<<_list.size()-1<<std::endl;
+#endif
+      }
       if (_allRRV && dynamic_cast<RooRealVar*>(serverClone)==0) {
         _allRRV=kFALSE ;
       }
@@ -303,6 +339,9 @@ Bool_t RooAbsCollection::addServerClonesToList(const RooAbsArg& var)
 
 RooAbsCollection &RooAbsCollection::operator=(const RooAbsCollection& other)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if (&other==this) return *this ;
 
   for (auto elem : _list) {
@@ -323,6 +362,9 @@ RooAbsCollection &RooAbsCollection::operator=(const RooAbsCollection& other)
 
 RooAbsCollection &RooAbsCollection::assignValueOnly(const RooAbsCollection& other, Bool_t oneSafe)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if (&other==this) return *this ;
 
   // Short cut for 1 element assignment
@@ -349,6 +391,9 @@ RooAbsCollection &RooAbsCollection::assignValueOnly(const RooAbsCollection& othe
 
 void RooAbsCollection::assignFast(const RooAbsCollection& other, Bool_t setValDirty)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if (&other==this) return ;
   assert(_list.size() == other._list.size());
 
@@ -382,6 +427,9 @@ void RooAbsCollection::assignFast(const RooAbsCollection& other, Bool_t setValDi
 
 Bool_t RooAbsCollection::addOwned(RooAbsArg& var, Bool_t silent)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // check that we own our variables or else are empty
   if(!_ownCont && (getSize() > 0) && !silent) {
     coutE(ObjectHandling) << ClassName() << "::" << GetName() << "::addOwned: can only add to an owned list" << endl;
@@ -390,6 +438,12 @@ Bool_t RooAbsCollection::addOwned(RooAbsArg& var, Bool_t silent)
   _ownCont= kTRUE;
 
   _list.push_back(&var);
+  if (doDict) {
+      _dict[var.GetName()] = _list.size()-1;
+#ifdef DDD
+      std::cout<<"DDD "<<GetName()<<" adding to dict: '"<<var.GetName()<<"', "<<_list.size()-1<<std::endl;
+#endif
+  }
   if (_allRRV && dynamic_cast<RooRealVar*>(&var)==0) {
     _allRRV=kFALSE ;
   }
@@ -408,6 +462,9 @@ Bool_t RooAbsCollection::addOwned(RooAbsArg& var, Bool_t silent)
 
 RooAbsArg *RooAbsCollection::addClone(const RooAbsArg& var, Bool_t silent)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // check that we own our variables or else are empty
   if(!_ownCont && (getSize() > 0) && !silent) {
     coutE(ObjectHandling) << ClassName() << "::" << GetName() << "::addClone: can only add to an owned list" << endl;
@@ -417,7 +474,15 @@ RooAbsArg *RooAbsCollection::addClone(const RooAbsArg& var, Bool_t silent)
 
   // add a pointer to a clone of this variable to our list (we now own it!)
   auto clone2 = static_cast<RooAbsArg*>(var.Clone());
-  if (clone2) _list.push_back(clone2);
+  if (clone2){
+      _list.push_back(clone2);
+      if (doDict) {
+          _dict[clone2->GetName()] = _list.size()-1;
+#ifdef DDD
+          std::cout<<"DDD "<<GetName()<<" adding to dict: '"<<clone2->GetName()<<"', "<<_list.size()-1<<std::endl;
+#endif
+      }
+  }
   if (_allRRV && dynamic_cast<const RooRealVar*>(&var)==0) {
     _allRRV=kFALSE ;
   }
@@ -434,6 +499,9 @@ RooAbsArg *RooAbsCollection::addClone(const RooAbsArg& var, Bool_t silent)
 
 Bool_t RooAbsCollection::add(const RooAbsArg& var, Bool_t silent)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // check that this isn't a copy of a list
   if(_ownCont && !silent) {
     coutE(ObjectHandling) << ClassName() << "::" << GetName() << "::add: cannot add to an owned list" << endl;
@@ -442,6 +510,13 @@ Bool_t RooAbsCollection::add(const RooAbsArg& var, Bool_t silent)
 
   // add a pointer to this variable to our list (we don't own it!)
   _list.push_back(const_cast<RooAbsArg*>(&var)); //FIXME
+  if (doDict) {
+      _dict[var.GetName()] = _list.size()-1;
+#ifdef DDD
+      std::cout<<"DDD "<<GetName()<<" adding to dict: '"<<var.GetName()<<"', "<<_list.size()-1<<std::endl;
+#endif
+  }
+
   if (_allRRV && dynamic_cast<const RooRealVar*>(&var)==0) {
     _allRRV=kFALSE ;
   }
@@ -456,8 +531,12 @@ Bool_t RooAbsCollection::add(const RooAbsArg& var, Bool_t silent)
 
 Bool_t RooAbsCollection::add(const RooAbsCollection& list, Bool_t silent)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   Bool_t result(false) ;
   _list.reserve(_list.size() + list._list.size());
+  //if(doDict)_dict.reserve(_list.size() + list._list.size()); 
 
   for (auto item : list._list) {
     result |= add(*item,silent);
@@ -474,8 +553,12 @@ Bool_t RooAbsCollection::add(const RooAbsCollection& list, Bool_t silent)
 
 Bool_t RooAbsCollection::addOwned(const RooAbsCollection& list, Bool_t silent)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   Bool_t result(false) ;
   _list.reserve(_list.size() + list._list.size());
+  //if(doDict)_dict.reserve(_list.size() + list._list.size()); 
 
   for (auto item : list._list) {
     result |= addOwned(*item, silent) ;
@@ -492,7 +575,11 @@ Bool_t RooAbsCollection::addOwned(const RooAbsCollection& list, Bool_t silent)
 
 void RooAbsCollection::addClone(const RooAbsCollection& list, Bool_t silent)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   _list.reserve(_list.size() + list._list.size());
+  //if(doDict)_dict.reserve(_list.size() + list._list.size()); 
 
   for (auto item : list._list) {
     addClone(*item, silent);
@@ -507,6 +594,9 @@ void RooAbsCollection::addClone(const RooAbsCollection& list, Bool_t silent)
 
 Bool_t RooAbsCollection::replace(const RooAbsCollection &other)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // check that this isn't a copy of a list
   if(_ownCont) {
     coutE(ObjectHandling) << "RooAbsCollection: cannot replace variables in a copied list" << endl;
@@ -532,6 +622,9 @@ Bool_t RooAbsCollection::replace(const RooAbsCollection &other)
 
 Bool_t RooAbsCollection::replace(const RooAbsArg& var1, const RooAbsArg& var2)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // check that this isn't a copy of a list
   if(_ownCont) {
     coutE(ObjectHandling) << "RooAbsCollection: cannot replace variables in a copied list" << endl;
@@ -541,6 +634,7 @@ Bool_t RooAbsCollection::replace(const RooAbsArg& var1, const RooAbsArg& var2)
   // is var1 already in this list?
   const char *name= var1.GetName();
   auto var1It = std::find(_list.begin(), _list.end(), &var1);
+  // TODO dict find.
 
   if (var1It == _list.end()) {
     coutE(ObjectHandling) << "RooAbsCollection: variable \"" << name << "\" is not in the list"
@@ -560,7 +654,19 @@ Bool_t RooAbsCollection::replace(const RooAbsArg& var1, const RooAbsArg& var2)
   }
 
   // replace var1 with var2
+  if (doDict){
+      _dict.erase( (*var1It)->GetName());
+#ifdef DDD
+      std::cout<<"DDD "<<GetName()<<" removing from dict: '"<<(*var1It)->GetName()<<"'"<<std::endl;
+#endif
+  }
   *var1It = const_cast<RooAbsArg*>(&var2); //FIXME
+  if (doDict){
+    _dict[var2.GetName()] = var1It - _list.begin();
+#ifdef DDD
+    std::cout<<"DDD "<<GetName()<<" adding to dict: '"<<var2.GetName()<<"', "<<var1It - _list.begin()<<std::endl;
+#endif
+  }
 
   if (_allRRV && dynamic_cast<const RooRealVar*>(&var2)==0) {
     _allRRV=kFALSE ;
@@ -579,10 +685,19 @@ Bool_t RooAbsCollection::replace(const RooAbsArg& var1, const RooAbsArg& var2)
 
 Bool_t RooAbsCollection::remove(const RooAbsArg& var, Bool_t , Bool_t matchByNameOnly)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // is var already in this list?
   const auto sizeBefore = _list.size();
 
   _list.erase(std::remove(_list.begin(), _list.end(), &var), _list.end());
+  if (doDict){
+      _dict.erase(var.GetName());
+#ifdef DDD
+      std::cout<<"DDD "<<GetName()<<" removing from dict: '"<<var.GetName()<<"'"<<std::endl;
+#endif
+  }
 
   if (matchByNameOnly) {
     const std::string name(var.GetName());
@@ -616,6 +731,9 @@ Bool_t RooAbsCollection::remove(const RooAbsArg& var, Bool_t , Bool_t matchByNam
 
 Bool_t RooAbsCollection::remove(const RooAbsCollection& list, Bool_t silent, Bool_t matchByNameOnly)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
 
   auto oldSize = _list.size();
   for (auto item : list._list) {
@@ -634,12 +752,16 @@ Bool_t RooAbsCollection::remove(const RooAbsCollection& list, Bool_t silent, Boo
 
 void RooAbsCollection::removeAll()
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if(_ownCont) {
     safeDeleteList() ;
     _ownCont= kFALSE;
   }
   else {
     _list.clear();
+    _dict.clear();
   }
 }
 
@@ -651,6 +773,9 @@ void RooAbsCollection::removeAll()
 
 void RooAbsCollection::setAttribAll(const Text_t* name, Bool_t value)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   for (auto arg : _list) {
     arg->setAttribute(name, value);
   }
@@ -666,6 +791,9 @@ void RooAbsCollection::setAttribAll(const Text_t* name, Bool_t value)
 
 RooAbsCollection* RooAbsCollection::selectByAttrib(const char* name, Bool_t value) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   TString selName(GetName()) ;
   selName.Append("_selection") ;
   RooAbsCollection *sel = (RooAbsCollection*) create(selName.Data()) ;
@@ -689,6 +817,9 @@ RooAbsCollection* RooAbsCollection::selectByAttrib(const char* name, Bool_t valu
 
 RooAbsCollection* RooAbsCollection::selectCommon(const RooAbsCollection& refColl) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // Create output set
   TString selName(GetName()) ;
   selName.Append("_selection") ;
@@ -712,6 +843,9 @@ RooAbsCollection* RooAbsCollection::selectCommon(const RooAbsCollection& refColl
 
 RooAbsCollection* RooAbsCollection::selectByName(const char* nameList, Bool_t verbose) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // Create output set
   TString selName(GetName()) ;
   selName.Append("_selection") ;
@@ -752,6 +886,9 @@ RooAbsCollection* RooAbsCollection::selectByName(const char* nameList, Bool_t ve
 
 Bool_t RooAbsCollection::equals(const RooAbsCollection& otherColl) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   // First check equal length
   if (getSize() != otherColl.getSize()) return kFALSE ;
 
@@ -773,6 +910,9 @@ Bool_t RooAbsCollection::equals(const RooAbsCollection& otherColl) const
 
 Bool_t RooAbsCollection::overlaps(const RooAbsCollection& otherColl) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   for (auto arg : _list) {
     if (otherColl.find(*arg)) {
       return kTRUE ;
@@ -790,6 +930,9 @@ Bool_t RooAbsCollection::overlaps(const RooAbsCollection& otherColl) const
 
 RooAbsArg * RooAbsCollection::find(const char *name) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if (!name)
     return nullptr;
   
@@ -809,8 +952,20 @@ RooAbsArg * RooAbsCollection::find(const char *name) const
     auto findByNamePtr = [nptr](const RooAbsArg* elm) {
       return nptr == elm->namePtr();
     };
-
-    item = std::find_if(_list.begin(), _list.end(), findByNamePtr);
+    if (doDict)
+    {
+        if (_dict.size() != _list.size()) recreateDict(); // maybe the check of empty is enough?
+        auto item=_dict.find(name);
+#ifdef DDD
+       dump();
+       std::cout<<"DDD "<<GetName()<<" searching for name: '"<<name<<"'->"<< item->second<<std::endl;
+#endif
+        return item != _dict.end()? _list[item->second] : nullptr;
+    }
+    else
+    {
+        item = std::find_if(_list.begin(), _list.end(), findByNamePtr);
+    }
   }
   
   return item != _list.end() ? *item : nullptr;
@@ -824,14 +979,28 @@ RooAbsArg * RooAbsCollection::find(const char *name) const
 
 RooAbsArg * RooAbsCollection::find(const RooAbsArg& arg) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   const auto nptr = arg.namePtr();
   auto findByNamePtr = [nptr](const RooAbsArg * listItem) {
     return nptr == listItem->namePtr();
   };
-
+  
+  if (doDict){
+      if (_dict.size() != _list.size()) recreateDict(); // maybe the check of empty is enough?
+      auto item=_dict.find(arg.GetName());
+#ifdef DDD
+       dump();
+       std::cout<<"DDD "<<GetName()<<" searching for name: '"<<arg.GetName()<<"'->"<< item->second<<std::endl;
+#endif
+      return item != _dict.end()? _list[item->second] : nullptr;
+  }
+  else{
   auto item = std::find_if(_list.begin(), _list.end(), findByNamePtr);
 
   return item != _list.end() ? *item : nullptr;
+  }
 }
 
 
@@ -841,6 +1010,9 @@ RooAbsArg * RooAbsCollection::find(const RooAbsArg& arg) const
 
 string RooAbsCollection::contentsString() const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   string retVal ;
   for (auto arg : _list) {
     retVal += arg->GetName();
@@ -859,6 +1031,9 @@ string RooAbsCollection::contentsString() const
 
 void RooAbsCollection::printName(ostream& os) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   os << GetName() ;
 }
 
@@ -869,6 +1044,9 @@ void RooAbsCollection::printName(ostream& os) const
 
 void RooAbsCollection::printTitle(ostream& os) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   os << GetTitle() ;
 }
 
@@ -879,6 +1057,9 @@ void RooAbsCollection::printTitle(ostream& os) const
 
 void RooAbsCollection::printClassName(ostream& os) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   os << IsA()->GetName() ;
 }
 
@@ -892,6 +1073,9 @@ void RooAbsCollection::printClassName(ostream& os) const
 
 Int_t RooAbsCollection::defaultPrintContents(Option_t* opt) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if (opt && TString(opt)=="I") {
     return kValue ;
   }
@@ -911,6 +1095,9 @@ Int_t RooAbsCollection::defaultPrintContents(Option_t* opt) const
 
 void RooAbsCollection::printValue(ostream& os) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   Bool_t first2(kTRUE) ;
   os << "(" ;
   for (auto arg : _list) {
@@ -936,6 +1123,9 @@ void RooAbsCollection::printValue(ostream& os) const
 
 void RooAbsCollection::printMultiline(ostream&os, Int_t contents, Bool_t /*verbose*/, TString indent) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if (TString(GetName()).Length()>0 && (contents&kCollectionHeader)) {
     os << indent << ClassName() << "::" << GetName() << ":" << (_ownCont?" (Owning contents)":"") << endl;
   }
@@ -974,6 +1164,14 @@ void RooAbsCollection::dump() const
   for (auto arg : _list) {
     cout << arg << " " << arg->IsA()->GetName() << "::" << arg->GetName() << " (" << arg->GetTitle() << ")" << endl ;
   }
+#ifdef DDD
+  if (doDict){cout<< "dictionary"<<endl;
+      for (auto arg : _dict)
+      {
+          cout<<"|"<< arg.first << " -> "<<arg.second<<endl;
+      }
+  }
+#endif
 }
 
 
@@ -1184,6 +1382,9 @@ void RooAbsCollection::printLatex(ostream& ofs, Int_t ncol, const char* option, 
 
 Bool_t RooAbsCollection::allInRange(const char* rangeSpec) const
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   if (!rangeSpec) return kTRUE ;
 
   // Parse rangeSpec specification
@@ -1230,6 +1431,9 @@ Bool_t RooAbsCollection::allInRange(const char* rangeSpec) const
 
 void RooAbsCollection::makeStructureTag()
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
 }
 
 
@@ -1237,6 +1441,9 @@ void RooAbsCollection::makeStructureTag()
 
 void RooAbsCollection::makeTypedStructureTag()
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1245,6 +1452,9 @@ void RooAbsCollection::makeTypedStructureTag()
 
 void RooAbsCollection::RecursiveRemove(TObject *obj)
 {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
    if (obj && obj->InheritsFrom(RooAbsArg::Class())) remove(*(RooAbsArg*)obj,false,false);
 }
 
@@ -1252,6 +1462,9 @@ void RooAbsCollection::RecursiveRemove(TObject *obj)
 /// Sort collection using std::sort and name comparison
 
 void RooAbsCollection::sort(Bool_t reverse) {
+#ifdef DDD
+  cout<<"DDD "<<__PRETTY_FUNCTION__<<endl;
+#endif
   //Windows seems to need an implementation where two different std::sorts are written
   //down in two different blocks. Switching between the two comparators using a ternary
   //operator does not compile on windows, although the signature is identical.
@@ -1269,6 +1482,9 @@ void RooAbsCollection::sort(Bool_t reverse) {
 
     std::sort(_list.begin(), _list.end(), cmp);
   }
+  if (doDict) { // sort recreate the dictionary structure from scratch.
+      recreateDict();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1279,5 +1495,14 @@ std::unique_ptr<RooAbsCollection::LegacyIterator_t> RooAbsCollection::makeLegacy
     ccoutE(DataHandling) << "The legacy RooFit collection iterators don't support reverse iterations, any more. "
     << "Use begin() and end()" << endl;
   return std::make_unique<LegacyIterator_t>(_list);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Recreate the dictionary structure from list. For sort or rooworkspace.
+void RooAbsCollection::recreateDict() const
+{
+      _dict.clear();
+      //_dict.reserve(_list.size());
+      for(size_t i=0;i<_list.size();++i) _dict[_list[i]->GetName()]=i;
 }
 
